@@ -83,7 +83,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) => AuthPage(title: 'Masuk sebagai ${roleName(widget.role)}', fields: [
         Input(label: 'Email', controller: email), Input(label: 'Kata Sandi', controller: password, obscure: true)], button: 'Masuk', error: message,
-        onSubmit: login, footer: widget.role == Role.admin ? null : TextButton(onPressed: () => push(context, RegisterPage(role: widget.role)), child: const Text('Belum punya akun? Daftar di sini')));
+        onSubmit: login, footer: widget.role == Role.admin ? const SizedBox.shrink() : TextButton(onPressed: () => push(context, RegisterPage(role: widget.role)), child: const Text('Belum punya akun? Daftar di sini')));
 }
 
 class RegisterPage extends StatelessWidget {
@@ -113,9 +113,70 @@ class _AdminHomeState extends State<AdminHome> {
 
 class WargaMap extends StatelessWidget { const WargaMap({super.key}); @override Widget build(BuildContext context) => AppPage(title: 'Peta titik sampah', child: Column(children: [const Expanded(child: MapPlaceholder()), Button('Buat Laporan', () => push(context, const CreateReport()))])); }
 class CreateReport extends StatefulWidget { const CreateReport({super.key}); @override State<CreateReport> createState() => _CreateReportState(); }
-class _CreateReportState extends State<CreateReport> { final location = TextEditingController(), desc = TextEditingController(); @override Widget build(BuildContext context) => AppPage(title: 'Buat Laporan', child: SingleChildScrollView(child: Column(children: [Input(label: 'Lokasi', controller: location, hint: 'Contoh: Jalan Diponegoro'), Input(label: 'Deskripsi', controller: desc, hint: 'Jelaskan kondisi sampah'), const SizedBox(height: 10), const Card(child: SizedBox(height: 130, child: Center(child: Icon(Icons.add_a_photo, size: 40, color: C.navy)))), const SizedBox(height: 18), Button('Kirim Laporan', () { reports.add(Report('#${reports.length + 1}'.padLeft(5, '0'), location.text.isEmpty ? 'Lokasi baru' : location.text, desc.text, 'Menunggu')); Navigator.pop(context); })]))); }
-class MyReports extends StatelessWidget { const MyReports({super.key}); @override Widget build(BuildContext context) => AppPage(title: 'Laporan Saya', child: ListView(children: reports.map((r) => ReportTile(r)).toList())); }
+class _CreateReportState extends State<CreateReport> { final location = TextEditingController(), desc = TextEditingController(); String category = 'Sampah rumah tangga'; String error = ''; @override Widget build(BuildContext context) => Scaffold(body: AppPage(title: 'Buat Laporan', child: SingleChildScrollView(child: Column(children: [Input(label: 'Lokasi', controller: location, hint: 'Contoh: Jalan Diponegoro'), DropdownButtonFormField<String>(initialValue: category, decoration: const InputDecoration(labelText: 'Kategori', filled: true, fillColor: Colors.white, border: OutlineInputBorder()), items: const ['Sampah rumah tangga', 'Sampah plastik', 'Sampah lainnya'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (x) => setState(() => category = x ?? category)), const SizedBox(height: 10), Input(label: 'Deskripsi', controller: desc, hint: 'Jelaskan kondisi sampah'), const SizedBox(height: 10), const Card(child: SizedBox(height: 130, child: Center(child: Icon(Icons.add_a_photo, size: 40, color: C.navy)))), if (error.isNotEmpty) Padding(padding: const EdgeInsets.all(8), child: Text(error, style: const TextStyle(color: Colors.red))), const SizedBox(height: 18), Button('Kirim Laporan', () { if (location.text.trim().isEmpty || desc.text.trim().isEmpty) { setState(() => error = 'Lokasi dan deskripsi wajib diisi.'); return; } reports.add(Report('#${reports.length + 1}'.padLeft(5, '0'), location.text.trim(), '[$category] ${desc.text.trim()}', 'Menunggu')); Navigator.pop(context); })])))); }
+class MyReports extends StatelessWidget { const MyReports({super.key}); @override Widget build(BuildContext context) => AppPage(title: 'Laporan Saya', child: ListView(children: reports.map((r) => ReportTile(r, onTap: () => push(context, ReportDetail(report: r)))).toList())); }
+class ReportDetail extends StatelessWidget { final Report report; const ReportDetail({super.key, required this.report}); @override Widget build(BuildContext context) => AppPage(title: 'Detail ${report.id}', child: ListView(padding: const EdgeInsets.only(bottom: 20), children: [ReportTile(report), const SizedBox(height: 16), const Text('Riwayat Status', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: C.navy)), const SizedBox(height: 10), StatusTimeline(current: report.status), if (report.rejectionReason != null) Card(color: Colors.red.shade50, child: Padding(padding: const EdgeInsets.all(12), child: Text('Alasan penolakan: ${report.rejectionReason}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))))])); }
+class StatusTimeline extends StatelessWidget {
+  final String current;
 
+  const StatusTimeline({
+    super.key,
+    required this.current,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const steps = [
+      'Menunggu',
+      'Diverifikasi',
+      'Ditugaskan',
+      'Dikerjakan',
+      'Selesai',
+    ];
+
+    final currentIndex = steps.indexOf(current);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            for (var i = 0; i < steps.length; i++)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    i <= currentIndex
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: i <= currentIndex ? C.teal : C.gray,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        top: 2,
+                        bottom: 14,
+                      ),
+                      child: Text(
+                        steps[i],
+                        style: TextStyle(
+                          color: i <= currentIndex
+                              ? C.navy
+                              : Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 class TaskPage extends StatefulWidget { const TaskPage({super.key}); @override State<TaskPage> createState() => _TaskPageState(); }
 class _TaskPageState extends State<TaskPage> { @override Widget build(BuildContext context) => AppPage(title: 'Daftar Tugas', child: ListView(children: reports.where((r) => r.assignedTo == Role.petugas && r.status != 'Selesai').map((r) => ReportTile(r, action: r.status == 'Ditugaskan' ? 'Mulai' : 'Selesaikan', onAction: () { setState(() { r.status = r.status == 'Ditugaskan' ? 'Dikerjakan' : 'Selesai'; }); })).toList())); }
 class TaskHistory extends StatelessWidget { const TaskHistory({super.key}); @override Widget build(BuildContext context) => AppPage(title: 'Riwayat Tugas', child: ListView(children: reports.where((r) => r.assignedTo == Role.petugas && r.status == 'Selesai').map((r) => ReportTile(r)).toList())); }
@@ -128,14 +189,14 @@ void rejectDialog(BuildContext context, Report report, VoidCallback refresh) { f
 class Notifications extends StatelessWidget { const Notifications({super.key}); @override Widget build(BuildContext context) => AppPage(title: 'Notifikasi', child: ListView(children: reports.map((r) => Card(child: ListTile(leading: const Icon(Icons.notifications, color: C.navy), title: Text('Laporan ${r.id}'), subtitle: Text('Status: ${r.status}')))).toList())); }
 class Profile extends StatelessWidget { final Role role; const Profile({super.key, required this.role}); @override Widget build(BuildContext context) => AppPage(title: 'Profil', child: Column(children: [const CircleAvatar(radius: 42, backgroundColor: C.pale, child: Icon(Icons.person, size: 48, color: C.navy)), const SizedBox(height: 12), Text(role == Role.admin ? 'Admin DLH' : role == Role.petugas ? 'Petugas DLH' : 'Warga Pelapor', style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold, color: C.navy)), const SizedBox(height: 25), OutlinedButton(onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const OpeningPage()), (_) => false), child: const Text('Keluar'))])); }
 
-class ReportTile extends StatelessWidget { final Report report; final String? action, secondaryAction; final VoidCallback? onAction, onSecondary; const ReportTile(this.report, {super.key, this.action, this.onAction, this.secondaryAction, this.onSecondary}); @override Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Laporan ${report.id}', style: const TextStyle(fontWeight: FontWeight.bold, color: C.navy, fontSize: 16)), Text(report.location), Text(report.description), if (report.rejectionReason != null) Text('Alasan: ${report.rejectionReason}', style: const TextStyle(color: Colors.red)), const SizedBox(height: 8), Wrap(spacing: 8, alignment: WrapAlignment.spaceBetween, children: [Status(report.status), if (action != null) ButtonSmall(action!, onAction!), if (secondaryAction != null) OutlinedButton(onPressed: onSecondary, child: Text(secondaryAction!))])]))); }
+class ReportTile extends StatelessWidget { final Report report; final String? action, secondaryAction; final VoidCallback? onAction, onSecondary, onTap; const ReportTile(this.report, {super.key, this.action, this.onAction, this.secondaryAction, this.onSecondary, this.onTap}); @override Widget build(BuildContext context) => Card(child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12), child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Laporan ${report.id}', style: const TextStyle(fontWeight: FontWeight.bold, color: C.navy, fontSize: 16)), Text(report.location), Text(report.description), if (report.rejectionReason != null) Text('Alasan: ${report.rejectionReason}', style: const TextStyle(color: Colors.red)), const SizedBox(height: 8), Wrap(spacing: 8, alignment: WrapAlignment.spaceBetween, children: [Status(report.status), if (action != null) ButtonSmall(action!, onAction!), if (secondaryAction != null) OutlinedButton(onPressed: onSecondary, child: Text(secondaryAction!))])])))); }
 class Status extends StatelessWidget { final String text; const Status(this.text, {super.key}); @override Widget build(BuildContext context) { final color = text == 'Selesai' ? C.navy : text == 'Dikerjakan' ? C.teal : text == 'Ditolak' ? C.gray : C.pale; return Chip(label: Text(text, style: TextStyle(color: text == 'Selesai' ? Colors.white : C.navy, fontWeight: FontWeight.bold)), backgroundColor: color); } }
 class Stat extends StatelessWidget { final String title; final int value; const Stat(this.title, this.value, {super.key}); @override Widget build(BuildContext context) => Expanded(child: Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(children: [Text(title), Text('$value', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: C.navy))])))); }
 class MapPlaceholder extends StatelessWidget { final double? height; const MapPlaceholder({super.key, this.height}); @override Widget build(BuildContext context) => Container(height: height, decoration: BoxDecoration(color: const Color(0xFFE4E0D5), borderRadius: BorderRadius.circular(18)), child: const Center(child: Icon(Icons.map, size: 90, color: C.teal))); }
 
-class AppPage extends StatelessWidget { final String title; final Widget child; const AppPage({super.key, required this.title, required this.child}); @override Widget build(BuildContext context) => SafeArea(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [const Logo(size: 42), const SizedBox(width: 10), Expanded(child: Text(title, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.bold, color: C.navy)))]), const SizedBox(height: 18), Expanded(child: child)]))); }
+class AppPage extends StatelessWidget { final String title; final Widget child; const AppPage({super.key, required this.title, required this.child}); @override Widget build(BuildContext context) => Scaffold(backgroundColor: C.pale, body: SafeArea(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [const Logo(size: 42), const SizedBox(width: 10), Expanded(child: Text(title, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.bold, color: C.navy)))]), const SizedBox(height: 18), Expanded(child: child)])))); }
 class GradientPage extends StatelessWidget { final Widget child; const GradientPage({super.key, required this.child}); @override Widget build(BuildContext context) => Scaffold(body: Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [C.navy, C.teal])), child: SafeArea(child: Padding(padding: const EdgeInsets.all(24), child: child)))); }
-class AuthPage extends StatelessWidget { final String title, button, error; final List<Widget> fields; final VoidCallback onSubmit; final Widget? footer; const AuthPage({super.key, required this.title, required this.fields, required this.button, required this.onSubmit, this.footer, this.error = ''}); @override Widget build(BuildContext context) => GradientPage(child: Center(child: SingleChildScrollView(child: Card(color: C.pale, child: Padding(padding: const EdgeInsets.all(22), child: Column(children: [const Logo(size: 60), const SizedBox(height: 10), Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold, color: C.navy)), const SizedBox(height: 18), ...fields, if (error.isNotEmpty) Text(error, style: const TextStyle(color: Colors.red)), const SizedBox(height: 10), Button(button, onSubmit), if (footer != null) footer!])))))); }
+class AuthPage extends StatelessWidget { final String title, button, error; final List<Widget> fields; final VoidCallback onSubmit; final Widget footer; const AuthPage({super.key, required this.title, required this.fields, required this.button, required this.onSubmit, required this.footer, this.error = ''}); @override Widget build(BuildContext context) => GradientPage(child: Center(child: SingleChildScrollView(child: Card(color: C.pale, child: Padding(padding: const EdgeInsets.all(22), child: Column(children: [const Logo(size: 60), const SizedBox(height: 10), Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold, color: C.navy)), const SizedBox(height: 18), ...fields, if (error.isNotEmpty) Text(error, style: const TextStyle(color: Colors.red)), const SizedBox(height: 10), Button(button, onSubmit), footer])))))); }
 class Input extends StatelessWidget { final String label; final TextEditingController? controller; final String hint; final bool obscure; const Input({super.key, required this.label, this.controller, this.hint = '', this.obscure = false}); @override Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(bottom: 10), child: TextField(controller: controller, obscureText: obscure, decoration: InputDecoration(labelText: label, hintText: hint, filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)))); }
 class Logo extends StatelessWidget { final double size; const Logo({super.key, required this.size}); @override Widget build(BuildContext context) => Container(width: size, height: size, decoration: const BoxDecoration(shape: BoxShape.circle, color: C.pale), child: Icon(Icons.location_on, size: size * .5, color: C.navy)); }
 class Button extends StatelessWidget { final String text; final VoidCallback onTap; const Button(this.text, this.onTap, {super.key}); @override Widget build(BuildContext context) => SizedBox(width: double.infinity, child: FilledButton(onPressed: onTap, style: FilledButton.styleFrom(backgroundColor: C.navy, foregroundColor: Colors.white), child: Text(text))); }
