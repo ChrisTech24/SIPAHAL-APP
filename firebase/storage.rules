@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// SIPAHAL — Security Rules Firebase Storage
+// Deploy: firebase deploy --only storage  (dari folder firebase/)
+//
+// Foto kondisi laporan & bukti pekerjaan disimpan di report_photos/.
+// Hanya pengguna login yang boleh membaca; hanya gambar < 8 MB yang boleh ditulis.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /report_photos/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

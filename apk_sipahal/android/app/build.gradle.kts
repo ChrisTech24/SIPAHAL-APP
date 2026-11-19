@@ -4,10 +4,19 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Plugin Firebase hanya diaktifkan bila file konfigurasi tersedia, sehingga
+// project tetap bisa di-build dan didemokan dalam mode data lokal.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+    logger.lifecycle("SIPAHAL: Firebase aktif (google-services.json ditemukan).")
+} else {
+    logger.lifecycle("SIPAHAL: google-services.json belum ada, memakai data lokal.")
+}
+
 android {
     namespace = "com.example.apk_sipahal"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "30.0.16248370"
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

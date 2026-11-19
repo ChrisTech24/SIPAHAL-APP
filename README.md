@@ -1,8 +1,23 @@
-# SIPAHAL
+﻿# SIPAHAL
 
 ### Sistem Informasi Pelaporan & Pemetaan Titik Pembuangan Sampah Liar
 
 SIPAHAL adalah aplikasi mobile berbasis Flutter yang dirancang untuk membantu masyarakat melaporkan lokasi pembuangan sampah liar melalui informasi lokasi geografis (*geolocation*). Aplikasi ini bertujuan mendukung pemetaan titik pembuangan sampah liar dan membantu pengelolaan sampah yang lebih terarah.
+
+## Cara Menjalankan (VS Code)
+
+Kode Flutter ada di folder `apk_sipahal`. Buka folder itu di VS Code (bukan folder root repo), karena di situ `pubspec.yaml` berada:
+
+```bash
+cd apk_sipahal
+flutter pub get
+flutter run -d emulator-5554   # atau pilih device Android di VS Code lalu tekan F5
+```
+
+- Panduan lengkap: [`docs/PANDUAN_MENJALANKAN.md`](docs/PANDUAN_MENJALANKAN.md)
+- Tangkapan layar aplikasi: [`screenshots/`](screenshots/)
+- Bukti rubrik Phase 3 (data, backend & integrasi platform): [`docs/RUBRIK_PHASE3.md`](docs/RUBRIK_PHASE3.md)
+- Panduan mengaktifkan Firebase (cloud): [`docs/FIREBASE_SETUP.md`](docs/FIREBASE_SETUP.md)
 
 ## 📌 Latar Belakang
 
@@ -19,43 +34,59 @@ Oleh karena itu, SIPAHAL dirancang sebagai solusi digital yang memungkinkan peng
 
 ## ✨ Fitur Utama
 
-Fitur yang direncanakan dalam pengembangan SIPAHAL meliputi:
+Aplikasi memiliki tiga peran dengan hak akses berbeda:
 
-* **Autentikasi Pengguna:** registrasi dan login pengguna.
-* **Pelaporan Sampah Liar:** formulir laporan yang berisi deskripsi dan kategori sampah.
-* **Geolocation:** pengambilan koordinat lokasi laporan.
-* **Unggah Foto:** dokumentasi kondisi lokasi yang dilaporkan.
-* **Pemetaan Lokasi:** menampilkan titik pembuangan sampah liar pada peta.
-* **Daftar Laporan:** melihat laporan yang telah dibuat.
+**Warga / Pelapor**
+* Registrasi dan login.
+* Peta titik sampah liar dengan penanda per status.
+* Membuat laporan: foto, kategori, deskripsi, dan lokasi (GPS atau pilih titik di peta).
+* Daftar "Laporan Saya" beserta detail, timeline status, dan notifikasi.
+* Profil dan reset data demo.
 
-*Catatan: daftar fitur akan diperbarui sesuai dengan hasil implementasi.*
+**Petugas DLH**
+* Daftar tugas yang ditugaskan kepadanya.
+* Mulai tugas (`dikerjakan`) dan menyelesaikan tugas dengan catatan + bukti foto (`selesai`).
+* Riwayat pekerjaan, notifikasi, dan profil.
+
+**Admin DLH**
+* Dashboard ringkasan + sebaran titik laporan di peta.
+* Verifikasi laporan, atau menolak dengan alasan wajib.
+* Penugasan laporan terverifikasi ke petugas.
+* Monitoring laporan per status.
+
+Status laporan mengikuti PRD: `menunggu` → `diverifikasi` → `ditugaskan` → `dikerjakan` → `selesai`, atau `ditolak` (dengan alasan).
 
 ## 🛠️ Teknologi yang Digunakan
 
 * **Flutter** — pengembangan antarmuka aplikasi mobile.
 * **Dart** — bahasa pemrograman.
+* **flutter_map + OpenStreetMap** — peta dan marker (tanpa API key Google Maps).
+* **geolocator** — pengambilan koordinat GPS dan penanganan izin lokasi.
+* **image_picker** — kamera/galeri untuk foto kondisi dan bukti pekerjaan.
+* **shared_preferences** — cache lokal (data demo + sesi login).
+* **Firebase** — Authentication, Cloud Firestore, dan Storage untuk mode cloud
+  (aktif otomatis bila `android/app/google-services.json` dipasang; jika tidak, aplikasi
+  memakai data lokal).
+* **url_launcher** — membuka navigasi eksternal (`geo:`).
+* **intl** — format tanggal/waktu Bahasa Indonesia.
 * **Git & GitHub** — pengelolaan kode sumber dan kolaborasi tim.
 * **Figma** — perancangan UI/UX.
 
-Teknologi tambahan untuk penyimpanan data, autentikasi, peta, dan geolocation akan dicantumkan setelah ditentukan dan diintegrasikan ke dalam aplikasi.
-
 ## 📂 Struktur Proyek
 
-Struktur direktori akan disesuaikan dengan implementasi aplikasi. Contoh struktur yang direncanakan:
-
 ```text
-sipahal/
+apk_sipahal/
 ├── lib/
-│   ├── models/
-│   ├── views/
-│   ├── viewmodels/
-│   ├── repositories/
-│   ├── services/
-│   ├── widgets/
-│   ├── app.dart
+│   ├── core/          # tema warna dan util
+│   ├── models/        # Role, ReportStatus, AppUser, Report, Assignment, LocationData
+│   ├── data/          # AppStore (cache lokal) + FirebaseBackend (Auth, Firestore, Storage)
+│   ├── services/      # AuthService, ReportService, LocationService
+│   ├── pages/         # opening, warga, petugas, admin, detail, notifikasi, profil
+│   ├── widgets/       # komponen UI + peta (ReportMap, MapPicker, LocationPreview)
 │   └── main.dart
-├── test/
-├── assets/
+├── test/              # test alur status & validasi penolakan
+├── android/           # konfigurasi Android (izin lokasi, label SIPAHAL)
+├── firebase/          # security rules Firestore & Storage + firebase.json
 ├── pubspec.yaml
 └── README.md
 ```
@@ -70,10 +101,10 @@ Pastikan Flutter SDK dan Git sudah terpasang di komputer.
    git clone URL_REPOSITORY_KALIAN
    ```
 
-2. Masuk ke direktori proyek:
+2. Masuk ke folder aplikasi:
 
    ```bash
-   cd sipahal
+   cd sipahal/apk_sipahal
    ```
 
 3. Unduh dependensi:
@@ -96,17 +127,16 @@ Pastikan Flutter SDK dan Git sudah terpasang di komputer.
 
 ## 📊 Status Pengembangan
 
-**Status:** Dalam pengembangan.
+**Status:** Prototipe selesai dan sudah diuji end-to-end di emulator Android 14.
 
-Tahapan pengembangan meliputi:
-
-* [ ] Perancangan kebutuhan dan UI/UX.
-* [ ] Implementasi antarmuka aplikasi.
-* [ ] Implementasi navigasi dan validasi formulir.
-* [ ] Implementasi pelaporan dan penyimpanan data.
-* [ ] Integrasi geolocation, foto, dan peta.
-* [ ] Pengujian aplikasi.
-* [ ] Persiapan rilis aplikasi.
+* [x] Perancangan kebutuhan dan UI/UX.
+* [x] Implementasi antarmuka aplikasi (warga, petugas, admin).
+* [x] Implementasi navigasi dan validasi formulir.
+* [x] Implementasi pelaporan dan penyimpanan data (cache lokal + integrasi Firebase).
+* [x] Integrasi geolocation, foto, dan peta.
+* [x] Pengujian aplikasi (`flutter analyze`, `flutter test`, uji manual).
+* [ ] Aktivasi Firebase produksi (pasang `google-services.json` + deploy rules) —
+  lihat [`docs/FIREBASE_SETUP.md`](docs/FIREBASE_SETUP.md).
 
 ## 👥 Tim Pengembang
 

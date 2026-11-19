@@ -1,0 +1,105 @@
+rules_version = '2';
+
+// SIPAHAL — Security Rules Cloud Firestore
+// Deploy: firebase deploy --only firestore:rules  (dari folder firebase/)
+//
+// Prinsip:
+// - Semua akses data wajib login (Firebase Auth).
+// - Peran diambil dari dokumen users/{uid}, bukan dari klien.
+// - Warga hanya membuat laporan untuk dirinya sendiri; status awal menunggu.
+// - Hanya admin yang boleh verifikasi/tolak/tugaskan.
+// - Petugas hanya boleh mengubah laporan yang ditugaskan kepadanya.
+// - Kata sandi tidak pernah disimpan di Firestore.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function role() {
+      return profile().role;
+    }
+
+    function active() {
+      return signedIn() && profile().isActive == true;
+    }
+
+    // ---------------------------------------------------------------------
+    // users
+    // ---------------------------------------------------------------------
+    match /users/{uid} {
+      allow read: if signedIn();
+
+      // Pendaftaran mandiri hanya untuk warga/petugas dan tanpa kata sandi.
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.role in ['warga', 'petugas']
+        && request.resource.data.isActive == true
+        && !('password' in request.resource.data);
+
+      // Pemilik boleh ubah nama/telepon; admin boleh ubah semua (mis. nonaktif).
+      allow update: if active() && (
+        (
+          request.auth.uid == uid
+          && !request.resource.data.diff(resource.data)
+              .affectedKeys()
+              .hasAny(['role', 'isActive', 'email'])
+        )
+        || role() == 'admin'
+      );
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // reports
+    // ---------------------------------------------------------------------
+    match /reports/{reportId} {
+      allow read: if signedIn();
+
+      // Warga membuat laporan baru, selalu berstatus menunggu.
+      allow create: if active()
+        && role() == 'warga'
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'menunggu';
+
+      // Admin bebas memperbarui status/penugasan.
+      // Petugas hanya laporan miliknya, dan hanya field progres pekerjaan.
+      allow update: if active() && (
+        role() == 'admin'
+        || (
+          role() == 'petugas'
+          && resource.data.assignedOfficerId == request.auth.uid
+          && request.resource.data.reporterId == resource.data.reporterId
+          && request.resource.data.diff(resource.data)
+              .affectedKeys()
+              .hasOnly(['status', 'assignment', 'history', 'updatedAt'])
+        )
+      );
+
+      // Warga tidak boleh mengubah status laporan yang sudah dikirim.
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // counters (nomor tampilan laporan, dibuat atomik oleh transaksi)
+    // ---------------------------------------------------------------------
+    match /counters/{counterId} {
+      allow read: if signedIn();
+      allow create, update: if active() && role() in ['warga', 'admin'];
+      allow delete: if false;
+    }
+
+    // Selain koleksi di atas: tolak semua.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
